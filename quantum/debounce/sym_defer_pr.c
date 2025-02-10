@@ -17,8 +17,9 @@ Symmetric per-row debounce algorithm. Changes only apply when
 DEBOUNCE milliseconds have elapsed since the last change.
 */
 
-#include "debounce.h"
+#include "matrix.h"
 #include "timer.h"
+#include "quantum.h"
 #include <stdlib.h>
 
 #ifndef DEBOUNCE
@@ -45,12 +46,11 @@ void debounce_free(void) {
     last_raw = NULL;
 }
 
-bool debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool changed) {
-    uint16_t now           = timer_read();
-    uint16_t elapsed16     = TIMER_DIFF_16(now, last_time);
-    last_time              = now;
-    uint8_t elapsed        = (elapsed16 > 255) ? 255 : elapsed16;
-    bool    cooked_changed = false;
+void debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool changed) {
+    uint16_t now       = timer_read();
+    uint16_t elapsed16 = TIMER_DIFF_16(now, last_time);
+    last_time          = now;
+    uint8_t elapsed    = (elapsed16 > 255) ? 255 : elapsed16;
 
     uint8_t* countdown = countdowns;
 
@@ -63,13 +63,10 @@ bool debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool 
         } else if (*countdown > elapsed) {
             *countdown -= elapsed;
         } else if (*countdown) {
-            cooked_changed |= cooked[row] ^ raw_row;
             cooked[row] = raw_row;
             *countdown  = 0;
         }
     }
-
-    return cooked_changed;
 }
 
 bool debounce_active(void) {
