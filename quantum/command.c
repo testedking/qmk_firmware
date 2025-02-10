@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "wait.h"
 #include "keycode.h"
 #include "host.h"
+#include "keymap.h"
 #include "print.h"
 #include "debug.h"
 #include "util.h"
@@ -32,7 +33,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "led.h"
 #include "command.h"
 #include "quantum.h"
-#include "usb_device_state.h"
 #include "version.h"
 
 #ifdef BACKLIGHT_ENABLE
@@ -161,7 +161,7 @@ static void command_common_help(void) {
 }
 
 static void print_version(void) {
-    xprintf("%s", /* clang-format off */
+    print(/* clang-format off */
         "\n\t- Version -\n"
         "VID: " STR(VENDOR_ID) "(" STR(MANUFACTURER) ") "
         "PID: " STR(PRODUCT_ID) "(" STR(PRODUCT) ") "
@@ -223,16 +223,21 @@ static void print_status(void) {
         "\n\t- Status -\n"
 
         "host_keyboard_leds(): %02X\n"
+#ifndef PROTOCOL_VUSB
         "keyboard_protocol: %02X\n"
         "keyboard_idle: %02X\n"
+#endif
 #ifdef NKRO_ENABLE
         "keymap_config.nkro: %02X\n"
 #endif
         "timer_read32(): %08lX\n"
 
         , host_keyboard_leds()
-        , usb_device_state_get_protocol()
-        , usb_device_state_get_idle_rate()
+#ifndef PROTOCOL_VUSB
+        /* these aren't set on the V-USB protocol, so we just ignore them for now */
+        , keyboard_protocol
+        , keyboard_idle
+#endif
 #ifdef NKRO_ENABLE
         , keymap_config.nkro
 #endif
@@ -277,7 +282,6 @@ static void print_eeconfig(void) {
         ".swap_grave_esc: %u\n"
         ".swap_backslash_backspace: %u\n"
         ".nkro: %u\n"
-        ".swap_escape_capslock: %u\n"
 
         , kc.raw
         , kc.swap_control_capslock
@@ -290,7 +294,6 @@ static void print_eeconfig(void) {
         , kc.swap_grave_esc
         , kc.swap_backslash_backspace
         , kc.nkro
-        , kc.swap_escape_capslock
     ); /* clang-format on */
 
 #    ifdef BACKLIGHT_ENABLE

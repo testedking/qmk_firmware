@@ -19,8 +19,9 @@ After pressing a key, it immediately changes state, and sets a counter.
 No further inputs are accepted until DEBOUNCE milliseconds have occurred.
 */
 
-#include "debounce.h"
+#include "matrix.h"
 #include "timer.h"
+#include "quantum.h"
 #include <stdlib.h>
 
 #ifdef PROTOCOL_CHIBIOS
@@ -47,7 +48,6 @@ static bool matrix_need_update;
 static debounce_counter_t *debounce_counters;
 static fast_timer_t        last_time;
 static bool                counters_need_update;
-static bool                cooked_changed;
 
 #    define DEBOUNCE_ELAPSED 0
 
@@ -67,9 +67,8 @@ void debounce_free(void) {
     debounce_counters = NULL;
 }
 
-bool debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool changed) {
+void debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool changed) {
     bool updated_last = false;
-    cooked_changed    = false;
 
     if (counters_need_update) {
         fast_timer_t now          = timer_read_fast();
@@ -93,8 +92,6 @@ bool debounce(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows, bool 
 
         transfer_matrix_values(raw, cooked, num_rows);
     }
-
-    return cooked_changed;
 }
 
 // If the current time is > debounce counter, set the counter to enable input.
@@ -118,7 +115,6 @@ static void update_debounce_counters(uint8_t num_rows, uint8_t elapsed_time) {
 
 // upload from raw_matrix to final matrix;
 static void transfer_matrix_values(matrix_row_t raw[], matrix_row_t cooked[], uint8_t num_rows) {
-    matrix_need_update                   = false;
     debounce_counter_t *debounce_pointer = debounce_counters;
     for (uint8_t row = 0; row < num_rows; row++) {
         matrix_row_t existing_row = cooked[row];
@@ -127,8 +123,7 @@ static void transfer_matrix_values(matrix_row_t raw[], matrix_row_t cooked[], ui
         // determine new value basd on debounce pointer + raw value
         if (existing_row != raw_row) {
             if (*debounce_pointer == DEBOUNCE_ELAPSED) {
-                *debounce_pointer = DEBOUNCE;
-                cooked_changed |= cooked[row] ^ raw_row;
+                *debounce_pointer    = DEBOUNCE;
                 cooked[row]          = raw_row;
                 counters_need_update = true;
             }
